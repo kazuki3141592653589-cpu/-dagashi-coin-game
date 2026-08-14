@@ -2,38 +2,49 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>レトロ10円玉ゲーム</title>
+    <title>Dopamine Rush - 駄菓子屋コインゲーム</title>
     <style>
-        body { margin: 0; background: #353b48; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #f5f6fa; font-family: sans-serif; touch-action: none; }
-        canvas { background: #dcdde1; border: 8px solid #57606f; border-radius: 4px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        #ui { margin-top: 10px; text-align: center; font-size: 14px; }
+        body { margin: 0; background: #2f3542; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; font-family: sans-serif; touch-action: none; }
+        canvas { background: #ced6e0; border: 10px solid #57606f; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+        #ui { margin-top: 10px; text-align: center; font-size: 13px; line-height: 1.5; }
+        .btn { background: #e1b12c; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 2px; }
     </style>
 </head>
 <body>
-    <div id="ui">所持金: <span id="money">50</span>円 / ハイスコア: <span id="high">50</span>円</div>
+    <div id="ui">
+        <div id="wallet">500円: <span id="c500">0</span> / 100円: <span id="c100">0</span> / 10円: <span id="c10">5</span></div>
+        <button class="btn" onclick="exchange(10)">10円×10→100円</button>
+        <button class="btn" onclick="exchange(50)">10円×50→500円</button>
+        <div id="msg" style="color:#ff4757; font-weight:bold; margin-top:5px;">コンボで倍率UP！目指せボーナス！</div>
+    </div>
     <canvas id="gameCanvas" width="300" height="400"></canvas>
-    <div id="msg">下の10円を引っ張って発射！</div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let money = 50, high = localStorage.getItem('retro_high') || 50;
-        let coin = {x: 150, y: 350, r: 10, vx: 0, vy: 0, moving: false, dragging: false};
+        let coins = {c500:0, c100:0, c10:5}, combo = 0, mult = 2, isBonus = false;
+        let coin = {x: 150, y: 360, r: 12, vx: 0, vy: 0, moving: false, dragging: false};
 
-        // 得点ポケット
-        const holes = [
-            {x: 70, y: 80, r: 18, pts: 50, color: '#e84118'},
-            {x: 150, y: 50, r: 20, pts: 100, color: '#fbc531'},
-            {x: 230, y: 80, r: 18, pts: 50, color: '#e84118'},
-            {x: 150, y: 150, r: 15, pts: 20, color: '#487eb0'}
+        const pockets = [
+            {x: 60, y: 350, r: 25, type: 'win'},
+            {x: 150, y: 350, r: 25, type: 'lose'},
+            {x: 240, y: 350, r: 25, type: 'win'}
         ];
 
+        function exchange(cost) {
+            if(coins.c10 >= cost) {
+                coins.c10 -= cost;
+                if(cost === 10) coins.c100 += 1; else coins.c500 += 1;
+                updateUI();
+            }
+        }
+
         canvas.addEventListener('pointerdown', (e) => {
-            if(coin.moving || money < 10) return;
+            if(coin.moving || coins.c10 < 1) return;
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX || e.touches[0].clientX) - rect.left;
             const y = (e.clientY || e.touches[0].clientY) - rect.top;
-            if(Math.hypot(x - coin.x, y - coin.y) < 40) coin.dragging = true;
+            if(Math.hypot(x - coin.x, y - coin.y) < 50) coin.dragging = true;
         });
 
         canvas.addEventListener('pointermove', (e) => {
@@ -45,46 +56,61 @@
         canvas.addEventListener('pointerup', () => {
             if(!coin.dragging) return;
             coin.dragging = false;
-            money -= 10;
-            coin.vx = (Math.random() - 0.5) * 4;
-            coin.vy = -(350 - coin.y) * 0.4 - 5;
+            coins.c10 -= 1;
+            coin.vx = (Math.random() - 0.5) * 6;
+            coin.vy = -(350 - coin.y) * 0.5 - 8;
             coin.moving = true;
+            updateUI();
         });
 
         function update() {
             if(coin.moving) {
-                coin.x += coin.vx; coin.y += coin.vy; coin.vy += 0.25;
-                if(coin.x < 15 || coin.x > 285) coin.vx *= -0.7;
-                
-                holes.forEach(h => {
-                    if(Math.hypot(coin.x - h.x, coin.y - h.y) < h.r) {
-                        money += h.pts;
-                        if(money > high) { high = money; localStorage.setItem('retro_high', high); }
+                coin.x += coin.vx; coin.y += coin.vy; coin.vy += 0.3;
+                if(coin.y < 150 && (coin.x < 80 || coin.x > 220)) coin.vx *= -1;
+                pockets.forEach(p => {
+                    if(Math.hypot(coin.x - p.x, coin.y - p.y) < p.r) {
+                        if(p.type === 'win') {
+                            combo++;
+                            if(combo >= 10) mult = 4;
+                            if(combo >= 15) isBonus = true;
+                            coins.c10 += (isBonus ? 50 : (2 * mult));
+                            document.getElementById('msg').innerText = isBonus ? "🔥超ボーナス！🔥" : `コンボ:${combo} 倍率:x${mult}`;
+                        } else {
+                            combo = 0; mult = 2; isBonus = false;
+                            document.getElementById('msg').innerText = "ハズレ…";
+                        }
                         reset();
                     }
                 });
-                if(coin.y > 410) reset();
+                if(coin.y > 420) { combo = 0; mult = 2; isBonus = false; reset(); }
             }
             draw();
             requestAnimationFrame(update);
         }
 
         function reset() {
-            coin = {x: 150, y: 350, r: 10, vx: 0, vy: 0, moving: false, dragging: false};
-            document.getElementById('money').innerText = money;
-            document.getElementById('high').innerText = high;
-            if(money < 10) { money = 50; document.getElementById('msg').innerText = "お小遣い支給！"; }
+            coin = {x: 150, y: 360, r: 12, vx: 0, vy: 0, moving: false, dragging: false};
+            updateUI();
+            if(coins.c10 < 1) { coins.c10 = 5; document.getElementById('msg').innerText = "お小遣い支給！"; }
+        }
+
+        function updateUI() {
+            document.getElementById('c10').innerText = coins.c10;
+            document.getElementById('c100').innerText = coins.c100;
+            document.getElementById('c500').innerText = coins.c500;
         }
 
         function draw() {
-            ctx.fillStyle = '#f5f6fa'; ctx.fillRect(0,0,300,400);
-            holes.forEach(h => {
-                ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI*2);
-                ctx.fillStyle = h.color; ctx.fill();
-                ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(h.pts, h.x, h.y+3);
+            ctx.fillStyle = isBonus ? '#fffa65' : '#ced6e0'; ctx.fillRect(0,0,300,400);
+            ctx.fillStyle = '#57606f'; ctx.fillRect(0,50,60,100); ctx.fillRect(240,50,60,100);
+            pockets.forEach(p => {
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.fillStyle = p.type === 'win' ? '#ff4757' : '#747d8c';
+                ctx.fill();
+                ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.fillText(p.type === 'win' ? 'x'+mult : '外', p.x, p.y+5);
             });
             ctx.beginPath(); ctx.arc(coin.x, coin.y, coin.r, 0, Math.PI*2);
-            ctx.fillStyle = '#fbc531'; ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f1c40f'; ctx.fill(); ctx.stroke();
         }
         update();
     </script>
