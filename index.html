@@ -2,490 +2,91 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>ボーナス＆両替！レトロ硬貨ゲーム</title>
+    <title>レトロ10円玉ゲーム</title>
     <style>
-        body {
-            margin: 0;
-            background: #222;
-            color: #fff;
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-            user-select: none;
-        }
-        h1 {
-            margin: 0 0 2px 0;
-            font-size: 15px;
-            color: #ff4757;
-        }
-        #wallet {
-            margin-bottom: 2px;
-            font-size: 12px;
-            display: flex;
-            gap: 8px;
-            background: rgba(255,255,255,0.1);
-            padding: 3px 8px;
-            border-radius: 4px;
-        }
-        #info {
-            margin-bottom: 2px;
-            font-size: 13px;
-            font-weight: bold;
-            color: #fbc531;
-        }
-        #bonus-bar-container {
-            width: 280px;
-            height: 10px;
-            background: #444;
-            border-radius: 5px;
-            margin-bottom: 3px;
-            overflow: hidden;
-            border: 1px solid #718093;
-        }
-        #bonus-bar {
-            width: 0%;
-            height: 100%;
-            background: #2ed573;
-            transition: width 0.2s;
-        }
-        #exchange-box {
-            margin-bottom: 3px;
-            display: flex;
-            gap: 6px;
-        }
-        .ex-btn {
-            background: #e1b12c;
-            color: #222;
-            border: none;
-            padding: 2px 6px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
-            font-weight: bold;
-        }
-        .ex-btn:hover {
-            background: #fbc531;
-        }
-        #bet-control {
-            margin-bottom: 3px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-        }
-        .bet-btn {
-            background: #718093;
-            color: white;
-            border: none;
-            padding: 2px 6px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 11px;
-        }
-        .bet-btn.active {
-            background: #e84118;
-        }
-        canvas {
-            background: #dcdde1;
-            border: 4px solid #718093;
-            border-radius: 4px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
-            touch-action: none;
-        }
-        #message {
-            margin-top: 3px;
-            font-size: 12px;
-            font-weight: bold;
-            height: 18px;
-            color: #ffa502;
-        }
-        #ranking {
-            margin-top: 2px;
-            font-size: 11px;
-            background: rgba(0,0,0,0.5);
-            padding: 3px 10px;
-            border-radius: 5px;
-            text-align: center;
-        }
+        body { margin: 0; background: #353b48; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #f5f6fa; font-family: sans-serif; touch-action: none; }
+        canvas { background: #dcdde1; border: 8px solid #57606f; border-radius: 4px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        #ui { margin-top: 10px; text-align: center; font-size: 14px; }
     </style>
 </head>
 <body>
-
-    <h1>ボーナス＆両替！硬貨コレクター</h1>
-    
-    <div id="wallet">
-        <div>500円: <span id="c500">0</span>枚</div>
-        <div>100円: <span id="c100">0</span>枚</div>
-        <div>10円: <span id="c10">5</span>枚</div>
-    </div>
-
-    <div id="info">合計所持金: <span id="totalValue">50</span>円</div>
-
-    <!-- ボーナスタイムゲージ -->
-    <div style="font-size: 11px; color: #2ed573; margin-bottom: 1px;">ボーナスゲージ（ポケットインで貯まる！）</div>
-    <div id="bonus-bar-container">
-        <div id="bonus-bar"></div>
-    </div>
-
-    <div id="exchange-box">
-        <button class="ex-btn" onclick="exchangeTo100()">10円×10 ⇒ 100円玉</button>
-        <button class="ex-btn" onclick="exchangeTo500()">10円×50 ⇒ 500円玉</button>
-    </div>
-
-    <div id="bet-control">
-        <span>発射ベット:</span>
-        <button class="bet-btn active" onclick="setBet(1)">10円×1</button>
-        <button class="bet-btn" onclick="setBet(3)">10円×3</button>
-        <button class="bet-btn" onclick="setBet(5)">10円×5</button>
-    </div>
-
-    <canvas id="gameCanvas" width="320" height="300"></canvas>
-    <div id="message">ポケットに入れてボーナスを発動させよう！</div>
-    <div id="ranking">ハイスコア（最高合計金額）: <span id="highScore">50</span>円</div>
+    <div id="ui">所持金: <span id="money">50</span>円 / ハイスコア: <span id="high">50</span>円</div>
+    <canvas id="gameCanvas" width="300" height="400"></canvas>
+    <div id="msg">下の10円を引っ張って発射！</div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const c500El = document.getElementById('c500');
-        const c100El = document.getElementById('c100');
-        const c10El = document.getElementById('c10');
-        const totalValueEl = document.getElementById('totalValue');
-        const highScoreEl = document.getElementById('highScore');
-        const messageEl = document.getElementById('message');
-        const bonusBar = document.getElementById('bonus-bar');
+        let money = 50, high = localStorage.getItem('retro_high') || 50;
+        let coin = {x: 150, y: 350, r: 10, vx: 0, vy: 0, moving: false, dragging: false};
 
-        let coins = { c500: 0, c100: 0, c10: 5 };
-        let currentBet = 1;
-        let highScore = localStorage.getItem('dagashi_total_high_score') || 50;
-        highScoreEl.textContent = highScore;
-
-        // ボーナスタイム関連
-        let bonusGauge = 0;
-        const maxGauge = 100;
-        let isBonusTime = false;
-        let bonusTimer = null;
-        let bonusTimeLeft = 0;
-
-        let rescueTimeLeft = 0;
-        let rescueInterval = null;
-
-        let coinObj = {
-            x: 160,
-            y: 270,
-            radius: 11,
-            vx: 0,
-            vy: 0,
-            isMoving: false,
-            isDragging: false
-        };
-
-        const pegs = [
-            {x: 110, y: 190, r: 6},
-            {x: 210, y: 190, r: 6},
-            {x: 160, y: 140, r: 8},
-            {x: 80,  y: 90,  r: 6},
-            {x: 240, y: 90,  r: 6},
-            {x: 160, y: 55,  r: 8}
+        // 得点ポケット
+        const holes = [
+            {x: 70, y: 80, r: 18, pts: 50, color: '#e84118'},
+            {x: 150, y: 50, r: 20, pts: 100, color: '#fbc531'},
+            {x: 230, y: 80, r: 18, pts: 50, color: '#e84118'},
+            {x: 150, y: 150, r: 15, pts: 20, color: '#487eb0'}
         ];
-
-        const pockets = [
-            {x: 60,  y: 25, r: 16, multiplier: 2, label: 'x2', color: '#e84118'},
-            {x: 160, y: 18, r: 18, multiplier: 10, label: '逆転x10', color: '#9b59b6'},
-            {x: 260, y: 25, r: 16, multiplier: 2, label: 'x2', color: '#e84118'}
-        ];
-
-        function getTotalValue() {
-            return (coins.c500 * 500) + (coins.c100 * 100) + (coins.c10 * 10);
-        }
-
-        function exchangeTo100() {
-            if (coins.c10 >= 10) {
-                coins.c10 -= 10;
-                coins.c100 += 1;
-                messageEl.textContent = "10円玉10個を100円玉に両替！";
-                updateUI();
-            } else {
-                messageEl.textContent = "10円玉が10個足りないよ！";
-            }
-        }
-
-        function exchangeTo500() {
-            if (coins.c10 >= 50) {
-                coins.c10 -= 50;
-                coins.c500 += 1;
-                messageEl.textContent = "✨10円玉50個を500円玉に両替！✨";
-                updateUI();
-            } else {
-                messageEl.textContent = "10円玉が50個足りないよ！";
-            }
-        }
-
-        function setBet(num) {
-            if (coinObj.isMoving) return;
-            currentBet = num;
-            document.querySelectorAll('.bet-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.textContent.includes('×' + num)) {
-                    btn.classList.add('active');
-                }
-            });
-            messageEl.textContent = `ベット数を 10円×${currentBet}枚 に設定！`;
-        }
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
 
         canvas.addEventListener('pointerdown', (e) => {
-            if (coinObj.isMoving) return;
-            if (!isBonusTime && coins.c10 < currentBet) {
-                messageEl.textContent = "発射用の10円玉が足りないよ！";
-                return;
-            }
-            const pos = getPos(e);
-            if (Math.hypot(pos.x - coinObj.x, pos.y - coinObj.y) < 30) {
-                coinObj.isDragging = true;
-            }
+            if(coin.moving || money < 10) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            if(Math.hypot(x - coin.x, y - coin.y) < 40) coin.dragging = true;
         });
 
-        canvas.addEventListener('pointerup', (e) => {
-            if (!coinObj.isDragging) return;
-            coinObj.isDragging = false;
+        canvas.addEventListener('pointermove', (e) => {
+            if(!coin.dragging) return;
+            const rect = canvas.getBoundingClientRect();
+            coin.y = Math.max(300, Math.min(380, (e.clientY || e.touches[0].clientY) - rect.top));
+        });
 
-            const pos = getPos(e);
-            let pullX = coinObj.x - pos.x;
-            let pullY = coinObj.y - pos.y;
-
-            if (pullY > 5) {
-                if (!isBonusTime) {
-                    if (coins.c10 < currentBet) {
-                        messageEl.textContent = "10円玉が足りません！";
-                        return;
-                    }
-                    coins.c10 -= currentBet; // 通常時はベット分消費
-                }
-                updateUI();
-
-                coinObj.vx = pullX * 0.08;
-                coinObj.vy = -pullY * 0.16;
-                coinObj.isMoving = true;
-                messageEl.textContent = isBonusTime ? "🔥ボーナス中！無限発射！🔥" : "発射！ポケットを狙え…！";
-            } else {
-                messageEl.textContent = "もっと後ろに引っ張ってね！";
-            }
+        canvas.addEventListener('pointerup', () => {
+            if(!coin.dragging) return;
+            coin.dragging = false;
+            money -= 10;
+            coin.vx = (Math.random() - 0.5) * 4;
+            coin.vy = -(350 - coin.y) * 0.4 - 5;
+            coin.moving = true;
         });
 
         function update() {
-            if (coinObj.isMoving) {
-                coinObj.x += coinObj.vx;
-                coinObj.y += coinObj.vy;
-                coinObj.vy += 0.22;
-                coinObj.vx *= 0.98;
-
-                if (coinObj.x - coinObj.radius < 10) {
-                    coinObj.x = 10 + coinObj.radius;
-                    coinObj.vx *= -0.7;
-                }
-                if (coinObj.x + coinObj.radius > canvas.width - 10) {
-                    coinObj.x = canvas.width - 10 - coinObj.radius;
-                    coinObj.vx *= -0.7;
-                }
-
-                pegs.forEach(peg => {
-                    let dist = Math.hypot(coinObj.x - peg.x, coinObj.y - peg.y);
-                    if (dist < coinObj.radius + peg.r) {
-                        let angle = Math.atan2(coinObj.y - peg.y, coinObj.x - peg.x);
-                        coinObj.x = peg.x + Math.cos(angle) * (coinObj.radius + peg.r);
-                        coinObj.y = peg.y + Math.sin(angle) * (coinObj.radius + peg.r);
-                        let speed = Math.hypot(coinObj.vx, coinObj.vy);
-                        coinObj.vx = Math.cos(angle) * speed * 0.7 + (Math.random() - 0.5) * 2;
-                        coinObj.vy = Math.sin(angle) * speed * 0.7 + (Math.random() - 0.5) * 2;
+            if(coin.moving) {
+                coin.x += coin.vx; coin.y += coin.vy; coin.vy += 0.25;
+                if(coin.x < 15 || coin.x > 285) coin.vx *= -0.7;
+                
+                holes.forEach(h => {
+                    if(Math.hypot(coin.x - h.x, coin.y - h.y) < h.r) {
+                        money += h.pts;
+                        if(money > high) { high = money; localStorage.setItem('retro_high', high); }
+                        reset();
                     }
                 });
-
-                pockets.forEach(pocket => {
-                    let dist = Math.hypot(coinObj.x - pocket.x, coinObj.y - pocket.y);
-                    if (dist < pocket.r - 4) {
-                        let baseCount = isBonusTime ? 3 : currentBet;
-                        let gained10 = baseCount * pocket.multiplier;
-                        coins.c10 += gained10;
-
-                        // ゲージを貯める（通常時のみ）
-                        if (!isBonusTime) {
-                            bonusGauge += (pocket.multiplier >= 10 ? 40 : 20);
-                            if (bonusGauge >= maxGauge) {
-                                startBonusTime();
-                            }
-                        }
-
-                        if (pocket.multiplier >= 10) {
-                            messageEl.textContent = `✨逆転！！ 10円玉+${gained10}枚ゲット！！✨`;
-                        } else {
-                            messageEl.textContent = `大当たり！ 10円玉+${gained10}枚ゲット！`;
-                        }
-                        updateUI();
-                        resetCoin();
-                    }
-                });
-
-                if (coinObj.y > canvas.height + 20) {
-                    messageEl.textContent = "ハズレ…入らなかった！";
-                    resetCoin();
-                }
+                if(coin.y > 410) reset();
             }
-
             draw();
             requestAnimationFrame(update);
         }
 
-        function startBonusTime() {
-            isBonusTime = true;
-            bonusGauge = maxGauge;
-            bonusTimeLeft = 10; // 10秒間ボーナス
-            messageEl.textContent = "🎉【ボーナスタイム突入】無限に打てるぞ！！🎉";
-            document.body.style.background = "#2c3e50";
-
-            if (bonusTimer) clearInterval(bonusTimer);
-            bonusTimer = setInterval(() => {
-                bonusTimeLeft--;
-                if (bonusTimeLeft <= 0) {
-                    clearInterval(bonusTimer);
-                    isBonusTime = false;
-                    bonusGauge = 0;
-                    document.body.style.background = "#222";
-                    messageEl.textContent = "ボーナスタイム終了！通常営業に戻ります";
-                } else {
-                    messageEl.textContent = `🎉ボーナスタイム中！残り ${bonusTimeLeft}秒 (無限発射)🎉`;
-                }
-            }, 1000);
-        }
-
-        function resetCoin() {
-            coinObj.x = 160;
-            coinObj.y = 270;
-            coinObj.vx = 0;
-            coinObj.vy = 0;
-            coinObj.isMoving = false;
-            
-            if (!isBonusTime && coins.c10 < currentBet) {
-                currentBet = Math.max(1, coins.c10);
-                setBet(currentBet);
-            }
-            updateUI();
-
-            if (getTotalValue() <= 0 && !isBonusTime && !rescueInterval) {
-                rescueTimeLeft = 20;
-                messageEl.textContent = "一文無し…20秒後に10円支給されます";
-
-                rescueInterval = setInterval(() => {
-                    rescueTimeLeft--;
-                    messageEl.textContent = `お救いタイマー: 残り${rescueTimeLeft}秒`;
-
-                    if (rescueTimeLeft <= 0) {
-                        clearInterval(rescueInterval);
-                        rescueInterval = null;
-                        coins.c10 = 1;
-                        currentBet = 1;
-                        setBet(1);
-                        messageEl.textContent = "お救い10円支給！ゲーム再開！";
-                        updateUI();
-                    }
-                }, 1000);
-            }
-        }
-
-        function updateUI() {
-            c500El.textContent = coins.c500;
-            c100El.textContent = coins.c100;
-            c10El.textContent = coins.c10;
-            
-            let total = getTotalValue();
-            totalValueEl.textContent = total;
-
-            if (!isBonusTime) {
-                let percent = (bonusGauge / maxGauge) * 100;
-                bonusBar.style.width = percent + '%';
-            } else {
-                bonusBar.style.width = '100%';
-            }
-
-            if (total > highScore) {
-                highScore = total;
-                highScoreEl.textContent = highScore;
-                localStorage.setItem('dagashi_total_high_score', highScore);
-            }
+        function reset() {
+            coin = {x: 150, y: 350, r: 10, vx: 0, vy: 0, moving: false, dragging: false};
+            document.getElementById('money').innerText = money;
+            document.getElementById('high').innerText = high;
+            if(money < 10) { money = 50; document.getElementById('msg').innerText = "お小遣い支給！"; }
         }
 
         function draw() {
-            ctx.fillStyle = '#f5f6fa';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.strokeStyle = '#2f3640';
-            ctx.lineWidth = 6;
-            ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-
-            pockets.forEach(pocket => {
-                ctx.beginPath();
-                ctx.arc(pocket.x, pocket.y, pocket.r, 0, Math.PI * 2);
-                ctx.fillStyle = pocket.color;
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#2d3748';
-                ctx.stroke();
-
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 10px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(pocket.label, pocket.x, pocket.y);
+            ctx.fillStyle = '#f5f6fa'; ctx.fillRect(0,0,300,400);
+            holes.forEach(h => {
+                ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI*2);
+                ctx.fillStyle = h.color; ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(h.pts, h.x, h.y+3);
             });
-
-            pegs.forEach(peg => {
-                ctx.beginPath();
-                ctx.arc(peg.x, peg.y, peg.r, 0, Math.PI * 2);
-                ctx.fillStyle = '#718093';
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#2d3748';
-                ctx.stroke();
-            });
-
-            if (coinObj.isDragging) {
-                ctx.beginPath();
-                ctx.moveTo(coinObj.x, coinObj.y);
-                ctx.lineTo(coinObj.x, coinObj.y + 30);
-                ctx.strokeStyle = isBonusTime ? '#2ed573' : '#ffa502';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            }
-
-            if (isBonusTime || coins.c10 > 0 || coinObj.isMoving) {
-                ctx.beginPath();
-                ctx.arc(coinObj.x, coinObj.y, coinObj.radius, 0, Math.PI * 2);
-                ctx.fillStyle = isBonusTime ? '#2ed573' : '#fbc531';
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = isBonusTime ? '#1e90ff' : '#e1b12c';
-                ctx.stroke();
-
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 10px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(isBonusTime ? 'BONUS' : '10', coinObj.x, coinObj.y);
-            }
+            ctx.beginPath(); ctx.arc(coin.x, coin.y, coin.r, 0, Math.PI*2);
+            ctx.fillStyle = '#fbc531'; ctx.fill(); ctx.stroke();
         }
-
         update();
     </script>
-
 </body>
 </html>
